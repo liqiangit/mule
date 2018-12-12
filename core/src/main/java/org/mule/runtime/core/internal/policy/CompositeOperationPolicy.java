@@ -40,7 +40,6 @@ public class CompositeOperationPolicy extends
 
   private static final String POLICY_OPERATION_NEXT_OPERATION_RESPONSE = "policy.operation.nextOperationResponse";
 
-  private final Processor nextOperation;
   private final OperationPolicyProcessorFactory operationPolicyProcessorFactory;
 
   /**
@@ -63,32 +62,6 @@ public class CompositeOperationPolicy extends
                                   OperationParametersProcessor operationParametersProcessor,
                                   OperationExecutionFunction operationExecutionFunction) {
     super(parameterizedPolicies, operationPolicyParametersTransformer, operationParametersProcessor, operationExecutionFunction);
-
-    this.nextOperation = new Processor() {
-
-      @Override
-      public CoreEvent process(CoreEvent event) throws MuleException {
-        return processToApply(event, this);
-      }
-
-      @Override
-      public Publisher<CoreEvent> apply(Publisher<CoreEvent> publisher) {
-        return from(publisher).flatMap(event -> {
-          Map<String, Object> parametersMap = new HashMap<>();
-          try {
-            parametersMap.putAll(operationParametersProcessor.getOperationParameters());
-          } catch (Exception e) {
-            return error(e);
-          }
-          if (operationPolicyParametersTransformer.isPresent()) {
-            parametersMap
-                .putAll(operationPolicyParametersTransformer.get().fromMessageToParameters(event.getMessage()));
-          }
-          return from(operationExecutionFunction.execute(parametersMap, event));
-        });
-      }
-    };
-
     this.operationPolicyProcessorFactory = operationPolicyProcessorFactory;
   }
 
@@ -115,7 +88,18 @@ public class CompositeOperationPolicy extends
   protected Publisher<CoreEvent> processNextOperation(Publisher<CoreEvent> eventPub,
                                                       OperationExecutionFunction operationExecutionFunction) {
     return from(eventPub)
-        .transform(nextOperation)
+        .flatMap(event -> {
+          Map<String, Object> parametersMap = new HashMap<>();
+          try {
+            parametersMap.putAll(getParametersProcessor().getOperationParameters());
+          } catch (Exception e) {
+            return error(e);
+          }
+          if (getParametersTransformer().isPresent()) {
+            parametersMap.putAll(getParametersTransformer().get().fromMessageToParameters(event.getMessage()));
+          }
+          return from(operationExecutionFunction.execute(parametersMap, event));
+        })
         .map(response -> InternalEvent.builder(response)
             .addInternalParameter(POLICY_OPERATION_NEXT_OPERATION_RESPONSE, response)
             .build())
@@ -155,7 +139,7 @@ public class CompositeOperationPolicy extends
     try {
       if (getParametersTransformer().isPresent()) {
         return processWithChildContext(CoreEvent.builder(operationEvent)
-            .message(getParametersTransformer().get().fromParametersToMessage(parametersProcessor.getOperationParameters()))
+            .message(getParametersTransformer().get().fromParametersToMessage(getParametersProcessor().getOperationParameters()))
             .build(), getExecutionProcessor(), empty());
       } else {
         return processWithChildContext(operationEvent, getExecutionProcessor(), empty());

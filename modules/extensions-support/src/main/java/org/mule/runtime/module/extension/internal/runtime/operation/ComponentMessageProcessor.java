@@ -177,20 +177,7 @@ public abstract class ComponentMessageProcessor<T extends ComponentModel> extend
   public Publisher<CoreEvent> apply(Publisher<CoreEvent> publisher) {
     return from(publisher)
         .flatMap(checkedFunction(event -> {
-          Optional<ConfigurationInstance> configuration;
-
-          if (getLocation() != null
-              && ((InternalEvent) event).getInternalParameters().containsKey(INTERCEPTION_RESOLVED_CONTEXT)) {
-            // If the event already contains an execution context, use that one.
-            // Only for interceptable components!
-            ExecutionContextAdapter<T> operationContext = getPrecalculatedContext(event);
-            configuration = operationContext.getConfiguration();
-          } else {
-            // Otherwise, generate the context as usual.
-            configuration = getConfiguration(event);
-          }
-
-          final Map<String, Object> resolutionResult = getResolutionResult(event, configuration);
+          Optional<ConfigurationInstance> configuration = resolveConfiguration(event);
 
           Context ctx = subscriberContext().block();
 
@@ -218,17 +205,30 @@ public abstract class ComponentMessageProcessor<T extends ComponentModel> extend
             };
           }
 
+          final Map<String, Object> resolutionResult = getResolutionResult(event, configuration);
+
           if (getLocation() != null) {
             ((DefaultFlowCallStack) event.getFlowCallStack()).setCurrentProcessorPath(resolvedProcessorRepresentation);
             return policyManager
-                .createOperationPolicy(this, event, resolutionResult,
-                                       operationExecutionFunction)
+                .createOperationPolicy(this, event, () -> resolutionResult, operationExecutionFunction)
                 .process(event, () -> resolutionResult);
           } else {
             // If this operation has no component location then it is internal. Don't apply policies on internal operations.
             return operationExecutionFunction.execute(resolutionResult, event);
           }
         }));
+  }
+
+  private Optional<ConfigurationInstance> resolveConfiguration(CoreEvent event) {
+    if (getLocation() != null
+        && ((InternalEvent) event).getInternalParameters().containsKey(INTERCEPTION_RESOLVED_CONTEXT)) {
+      // If the event already contains an execution context, use that one.
+      // Only for interceptable components!
+      return getPrecalculatedContext(event).getConfiguration();
+    } else {
+      // Otherwise, generate the context as usual.
+      return getConfiguration(event);
+    }
   }
 
   /**

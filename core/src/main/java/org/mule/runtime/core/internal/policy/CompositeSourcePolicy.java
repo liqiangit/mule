@@ -170,7 +170,7 @@ public class CompositeSourcePolicy extends
                   .fromMessageToSuccessResponseParameters(policiesResultEvent.getMessage())))
               .orElse(originalResponseParameters);
           return right(SourcePolicyFailureResult.class, new SourcePolicySuccessResult(policiesResultEvent, responseParameters,
-                                                                                      messageSourceResponseParametersProcessor));
+                                                                                      getParametersProcessor()));
         })
         .doOnNext(result -> logSourcePolicySuccessfullResult(result.getRight()))
         .doOnError(e -> !(e instanceof FlowExecutionException || e instanceof MessagingException),
@@ -198,12 +198,14 @@ public class CompositeSourcePolicy extends
 
   private Map<String, Object> concatMaps(Map<String, Object> originalResponseParameters,
                                          Map<String, Object> policyResponseParameters) {
-    Map<String, Object> concatMap = new HashMap<>();
-    if (originalResponseParameters != null) {
+    if (originalResponseParameters == null) {
+      return policyResponseParameters;
+    } else {
+      Map<String, Object> concatMap = new HashMap<>();
       concatMap.putAll(originalResponseParameters);
+      concatMap.putAll(policyResponseParameters);
+      return concatMap;
     }
-    concatMap.putAll(policyResponseParameters);
-    return concatMap;
   }
 
   private void logEvent(String eventId, String policyName, Supplier<String> message, String startingMessage) {

@@ -36,7 +36,6 @@ import org.mule.runtime.policy.api.PolicyPointcutParameters;
 import org.mule.runtime.policy.api.SourcePolicyPointcutParametersFactory;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -77,12 +76,12 @@ public class DefaultPolicyManager implements PolicyManager, Initialisable {
     if (parameterizedPolicies.isEmpty()) {
       return (event, respParamProcessor) -> from(process(event, flowExecutionProcessor))
           .<Either<SourcePolicyFailureResult, SourcePolicySuccessResult>>map(flowExecutionResult -> right(new SourcePolicySuccessResult(flowExecutionResult,
-                                                                                                                                        () -> respParamProcessor
+                                                                                                                                        () -> messageSourceResponseParametersProcessor
                                                                                                                                             .getSuccessfulExecutionResponseParametersFunction()
                                                                                                                                             .apply(flowExecutionResult),
-                                                                                                                                        respParamProcessor)))
+                                                                                                                                        messageSourceResponseParametersProcessor)))
           .onErrorResume(MessagingException.class, messagingException -> {
-            return just(left(new SourcePolicyFailureResult(messagingException, () -> respParamProcessor
+            return just(left(new SourcePolicyFailureResult(messagingException, () -> messageSourceResponseParametersProcessor
                 .getFailedExecutionResponseParametersFunction()
                 .apply(messagingException.getEvent()))));
           });
@@ -106,11 +105,12 @@ public class DefaultPolicyManager implements PolicyManager, Initialisable {
 
   @Override
   public OperationPolicy createOperationPolicy(Component operation, CoreEvent event,
-                                               Map<String, Object> operationParameters,
+                                               OperationParametersProcessor operationParameters,
                                                OperationExecutionFunction operationExecutionFunction) {
 
     PolicyPointcutParameters operationPointcutParameters =
-        policyPointcutParametersManager.createOperationPointcutParameters(operation, event, operationParameters);
+        policyPointcutParametersManager.createOperationPointcutParameters(operation, event,
+                                                                          operationParameters.getOperationParameters());
 
     List<Policy> parameterizedPolicies = policyProvider.findOperationParameterizedPolicies(operationPointcutParameters);
     if (parameterizedPolicies.isEmpty()) {
@@ -120,7 +120,7 @@ public class DefaultPolicyManager implements PolicyManager, Initialisable {
     return new CompositeOperationPolicy(parameterizedPolicies,
                                         lookupOperationParametersTransformer(operation.getLocation().getComponentIdentifier()
                                             .getIdentifier()),
-                                        operationPolicyProcessorFactory, () -> operationParameters, operationExecutionFunction);
+                                        operationPolicyProcessorFactory, operationParameters, operationExecutionFunction);
   }
 
   private Optional<OperationPolicyParametersTransformer> lookupOperationParametersTransformer(ComponentIdentifier componentIdentifier) {

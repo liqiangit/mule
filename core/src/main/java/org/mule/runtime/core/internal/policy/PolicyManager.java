@@ -13,8 +13,6 @@ import org.mule.runtime.core.api.processor.Processor;
 import org.mule.runtime.core.internal.message.InternalEvent;
 import org.mule.runtime.policy.api.PolicyPointcutParameters;
 
-import java.util.Map;
-
 /**
  * Manager for handling policies in Mule.
  *
@@ -62,7 +60,7 @@ public interface PolicyManager {
    * @return a {@link OperationPolicy} associated to that source.
    */
   OperationPolicy createOperationPolicy(Component operation, CoreEvent operationEvent,
-                                        Map<String, Object> operationParameters,
+                                        OperationParametersProcessor operationParameters,
                                         OperationExecutionFunction operationExecutionFunction);
 
   /**
