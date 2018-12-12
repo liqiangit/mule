@@ -18,6 +18,7 @@ import org.mule.runtime.core.api.event.CoreEvent;
 import org.mule.runtime.core.api.policy.OperationPolicyParametersTransformer;
 import org.mule.runtime.core.api.policy.Policy;
 import org.mule.runtime.core.api.processor.Processor;
+import org.mule.runtime.core.internal.message.InternalEvent;
 
 import org.reactivestreams.Publisher;
 
@@ -36,19 +37,19 @@ import java.util.Optional;
 public class CompositeOperationPolicy extends
     AbstractCompositePolicy<OperationPolicyParametersTransformer, OperationParametersProcessor> implements OperationPolicy {
 
+  private static final String POLICY_OPERATION_NEXT_OPERATION_RESPONSE = "policy.operation.nextOperationResponse";
 
   private final Processor nextOperation;
   private final OperationPolicyProcessorFactory operationPolicyProcessorFactory;
-  private CoreEvent nextOperationResponse;
 
   /**
    * Creates a new composite policy.
-   *
+   * <p>
    * If a non-empty {@code operationPolicyParametersTransformer} is passed to this class, then it will be used to convert the flow
    * execution response parameters to a message with the content of such parameters in order to allow the pipeline after the
    * next-operation to modify the response. If an empty {@code operationPolicyParametersTransformer} is provided then the policy
    * won't be able to change the response parameters of the source and the original response parameters generated from the source
-   * will be usd.
+   * will be used.
    *
    * @param parameterizedPolicies list of {@link Policy} to chain together.
    * @param operationPolicyParametersTransformer transformer from the operation parameters to a message and vice versa.
@@ -111,7 +112,12 @@ public class CompositeOperationPolicy extends
    */
   @Override
   protected Publisher<CoreEvent> processNextOperation(CoreEvent event, OperationParametersProcessor parametersProcessor) {
-    return just(event).transform(nextOperation).doOnNext(response -> this.nextOperationResponse = response);
+    return just(event)
+        .transform(nextOperation)
+        .map(response -> InternalEvent.builder(response)
+            .addInternalParameter(POLICY_OPERATION_NEXT_OPERATION_RESPONSE, response)
+            .build())
+        .cast(CoreEvent.class);
   }
 
   /**
@@ -124,22 +130,23 @@ public class CompositeOperationPolicy extends
    */
   @Override
   protected Publisher<CoreEvent> processPolicy(Policy policy, Processor nextProcessor, CoreEvent event) {
-    if (nextOperationResponse == null) {
-      nextOperationResponse = event;
-    }
-
     Processor defaultOperationPolicy =
         operationPolicyProcessorFactory.createOperationPolicy(policy, nextProcessor);
-    return just(event).transform(defaultOperationPolicy)
+    return just(event)
+        .transform(defaultOperationPolicy)
         .map(policyResponse -> {
 
           if (policy.getPolicyChain().isPropagateMessageTransformations()) {
-            nextOperationResponse = policyResponse;
-            return policyResponse;
+            return InternalEvent.builder(policyResponse)
+                .addInternalParameter(POLICY_OPERATION_NEXT_OPERATION_RESPONSE, policyResponse)
+                .build();
           }
 
-          return nextOperationResponse;
-        });
+          final InternalEvent nextOperationResponse = (InternalEvent) ((InternalEvent) policyResponse).getInternalParameters()
+              .get(POLICY_OPERATION_NEXT_OPERATION_RESPONSE);
+          return nextOperationResponse != null ? nextOperationResponse : policyResponse;
+        })
+        .cast(CoreEvent.class);
   }
 
   @Override

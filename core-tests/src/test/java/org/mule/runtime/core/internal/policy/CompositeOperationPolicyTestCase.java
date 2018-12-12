@@ -78,17 +78,15 @@ public class CompositeOperationPolicyTestCase extends AbstractMuleTestCase {
     when(operationPolicyProcessorFactory.createOperationPolicy(same(secondPolicy), any()))
         .thenReturn(secondPolicyOperationPolicyProcessor);
     when(operationPolicyProcessorFactory.createOperationPolicy(same(firstPolicy), any())).thenAnswer(policyFactoryInvocation -> {
-      when(firstPolicyOperationPolicyProcessor.apply(any())).thenAnswer(policyProcessorInvocation -> {
-        just(initialEvent).transform((Processor) policyFactoryInvocation.getArguments()[1]).block();
-        return just(firstPolicyProcessorResultEvent);
-      });
+      when(firstPolicyOperationPolicyProcessor.apply(any()))
+          .thenAnswer(policyProcessorInvocation -> just(initialEvent)
+              .transform((Processor) policyFactoryInvocation.getArguments()[1]));
       return firstPolicyOperationPolicyProcessor;
     });
     when(operationPolicyProcessorFactory.createOperationPolicy(same(secondPolicy), any())).thenAnswer(policyFactoryInvocation -> {
-      when(secondPolicyOperationPolicyProcessor.apply(any())).thenAnswer(policyProcessorInvocation -> {
-        just(initialEvent).transform((Processor) policyFactoryInvocation.getArguments()[1]).block();
-        return just(secondPolicyResultProcessorEvent);
-      });
+      when(secondPolicyOperationPolicyProcessor.apply(any()))
+          .thenAnswer(policyProcessorInvocation -> just(initialEvent)
+              .transform((Processor) policyFactoryInvocation.getArguments()[1]));
       return secondPolicyOperationPolicyProcessor;
     });
   }

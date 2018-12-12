@@ -89,17 +89,17 @@ public class CompositeSourcePolicyTestCase extends AbstractMuleContextTestCase {
     when(secondPolicy.getPolicyChain().apply(any())).thenReturn(just(secondPolicyResultEvent));
 
     when(sourcePolicyProcessorFactory.createSourcePolicy(same(firstPolicy), any())).thenAnswer(policyFactoryInvocation -> {
-      when(firstPolicySourcePolicyProcessor.apply(any())).thenAnswer(policyProcessorInvocation -> {
-        just(modifiedEvent).transform((Processor) policyFactoryInvocation.getArguments()[1]).block();
-        return just(firstPolicyResultEvent);
-      });
+      when(firstPolicySourcePolicyProcessor.apply(any()))
+          .thenAnswer(policyProcessorInvocation -> just(modifiedEvent)
+              .transform((Processor) policyFactoryInvocation.getArguments()[1])
+              .map(e -> firstPolicyResultEvent));
       return firstPolicySourcePolicyProcessor;
     });
     when(sourcePolicyProcessorFactory.createSourcePolicy(same(secondPolicy), any())).thenAnswer(policyFactoryInvocation -> {
-      when(secondPolicySourcePolicyProcessor.apply(any())).thenAnswer(policyProcessorInvocation -> {
-        just(modifiedEvent).transform((Processor) policyFactoryInvocation.getArguments()[1]).block();
-        return just(secondPolicyResultEvent);
-      });
+      when(secondPolicySourcePolicyProcessor.apply(any()))
+          .thenAnswer(policyProcessorInvocation -> just(modifiedEvent)
+              .transform((Processor) policyFactoryInvocation.getArguments()[1])
+              .map(e -> secondPolicyResultEvent));
       return secondPolicySourcePolicyProcessor;
     });
   }
