@@ -26,6 +26,7 @@ import static org.mule.runtime.dsl.api.component.config.DefaultComponentLocation
 import static reactor.core.publisher.Mono.error;
 import static reactor.core.publisher.Mono.from;
 import static reactor.core.publisher.Mono.just;
+
 import org.mule.runtime.api.message.Message;
 import org.mule.runtime.core.api.construct.FlowConstruct;
 import org.mule.runtime.core.api.event.CoreEvent;
@@ -33,10 +34,9 @@ import org.mule.runtime.core.api.functional.Either;
 import org.mule.runtime.core.api.policy.Policy;
 import org.mule.runtime.core.api.policy.SourcePolicyParametersTransformer;
 import org.mule.runtime.core.api.processor.Processor;
+import org.mule.runtime.core.api.processor.ReactiveProcessor;
 import org.mule.runtime.core.privileged.event.BaseEventContext;
 import org.mule.tck.junit4.AbstractMuleContextTestCase;
-
-import java.util.Optional;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -44,6 +44,9 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.mockito.ArgumentCaptor;
 import org.reactivestreams.Publisher;
+
+import java.util.Optional;
+
 import reactor.core.publisher.Mono;
 
 //TODO MULE-10927 - create a common class between CompositeOperationPolicyTestCase and CompositeSourcePolicyTestCase
@@ -91,14 +94,14 @@ public class CompositeSourcePolicyTestCase extends AbstractMuleContextTestCase {
     when(sourcePolicyProcessorFactory.createSourcePolicy(same(firstPolicy), any())).thenAnswer(policyFactoryInvocation -> {
       when(firstPolicySourcePolicyProcessor.apply(any()))
           .thenAnswer(policyProcessorInvocation -> just(modifiedEvent)
-              .transform((Processor) policyFactoryInvocation.getArguments()[1])
+              .transform((ReactiveProcessor) policyFactoryInvocation.getArguments()[1])
               .map(e -> firstPolicyResultEvent));
       return firstPolicySourcePolicyProcessor;
     });
     when(sourcePolicyProcessorFactory.createSourcePolicy(same(secondPolicy), any())).thenAnswer(policyFactoryInvocation -> {
       when(secondPolicySourcePolicyProcessor.apply(any()))
           .thenAnswer(policyProcessorInvocation -> just(modifiedEvent)
-              .transform((Processor) policyFactoryInvocation.getArguments()[1])
+              .transform((ReactiveProcessor) policyFactoryInvocation.getArguments()[1])
               .map(e -> secondPolicyResultEvent));
       return secondPolicySourcePolicyProcessor;
     });

@@ -32,6 +32,7 @@ import org.mule.runtime.core.api.event.CoreEvent;
 import org.mule.runtime.core.api.policy.OperationPolicyParametersTransformer;
 import org.mule.runtime.core.api.policy.Policy;
 import org.mule.runtime.core.api.processor.Processor;
+import org.mule.runtime.core.api.processor.ReactiveProcessor;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 
 import org.junit.Before;
@@ -80,13 +81,13 @@ public class CompositeOperationPolicyTestCase extends AbstractMuleTestCase {
     when(operationPolicyProcessorFactory.createOperationPolicy(same(firstPolicy), any())).thenAnswer(policyFactoryInvocation -> {
       when(firstPolicyOperationPolicyProcessor.apply(any()))
           .thenAnswer(policyProcessorInvocation -> just(initialEvent)
-              .transform((Processor) policyFactoryInvocation.getArguments()[1]));
+              .transform((ReactiveProcessor) policyFactoryInvocation.getArguments()[1]));
       return firstPolicyOperationPolicyProcessor;
     });
     when(operationPolicyProcessorFactory.createOperationPolicy(same(secondPolicy), any())).thenAnswer(policyFactoryInvocation -> {
       when(secondPolicyOperationPolicyProcessor.apply(any()))
           .thenAnswer(policyProcessorInvocation -> just(initialEvent)
-              .transform((Processor) policyFactoryInvocation.getArguments()[1]));
+              .transform((ReactiveProcessor) policyFactoryInvocation.getArguments()[1]));
       return secondPolicyOperationPolicyProcessor;
     });
   }

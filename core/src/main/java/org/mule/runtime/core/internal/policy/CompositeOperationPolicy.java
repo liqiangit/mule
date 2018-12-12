@@ -11,13 +11,13 @@ import static org.mule.runtime.core.privileged.processor.MessageProcessors.proce
 import static org.mule.runtime.core.privileged.processor.MessageProcessors.processWithChildContext;
 import static reactor.core.publisher.Mono.error;
 import static reactor.core.publisher.Mono.from;
-import static reactor.core.publisher.Mono.just;
 
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.core.api.event.CoreEvent;
 import org.mule.runtime.core.api.policy.OperationPolicyParametersTransformer;
 import org.mule.runtime.core.api.policy.Policy;
 import org.mule.runtime.core.api.processor.Processor;
+import org.mule.runtime.core.api.processor.ReactiveProcessor;
 import org.mule.runtime.core.internal.message.InternalEvent;
 
 import org.reactivestreams.Publisher;
@@ -35,7 +35,8 @@ import java.util.Optional;
  * @since 4.0
  */
 public class CompositeOperationPolicy extends
-    AbstractCompositePolicy<OperationPolicyParametersTransformer, OperationParametersProcessor> implements OperationPolicy {
+    AbstractCompositePolicy<OperationPolicyParametersTransformer, OperationParametersProcessor, OperationExecutionFunction>
+    implements OperationPolicy {
 
   private static final String POLICY_OPERATION_NEXT_OPERATION_RESPONSE = "policy.operation.nextOperationResponse";
 
@@ -61,7 +62,7 @@ public class CompositeOperationPolicy extends
                                   OperationPolicyProcessorFactory operationPolicyProcessorFactory,
                                   OperationParametersProcessor operationParametersProcessor,
                                   OperationExecutionFunction operationExecutionFunction) {
-    super(parameterizedPolicies, operationPolicyParametersTransformer, operationParametersProcessor);
+    super(parameterizedPolicies, operationPolicyParametersTransformer, operationParametersProcessor, operationExecutionFunction);
 
     this.nextOperation = new Processor() {
 
@@ -108,11 +109,12 @@ public class CompositeOperationPolicy extends
    * Stores the operation result so all the chains after the operation execution are executed with the actual operation result and
    * not a modified version from another policy.
    *
-   * @param event the event to execute the operation.
+   * @param eventPub the event to execute the operation.
    */
   @Override
-  protected Publisher<CoreEvent> processNextOperation(CoreEvent event, OperationParametersProcessor parametersProcessor) {
-    return just(event)
+  protected Publisher<CoreEvent> processNextOperation(Publisher<CoreEvent> eventPub,
+                                                      OperationExecutionFunction operationExecutionFunction) {
+    return from(eventPub)
         .transform(nextOperation)
         .map(response -> InternalEvent.builder(response)
             .addInternalParameter(POLICY_OPERATION_NEXT_OPERATION_RESPONSE, response)
@@ -126,13 +128,12 @@ public class CompositeOperationPolicy extends
    *
    * @param policy the policy to execute.
    * @param nextProcessor the processor to execute when the policy next-processor gets executed
-   * @param event the event to use to execute the policy chain.
+   * @param eventPub the event to use to execute the policy chain.
    */
   @Override
-  protected Publisher<CoreEvent> processPolicy(Policy policy, Processor nextProcessor, CoreEvent event) {
-    Processor defaultOperationPolicy =
-        operationPolicyProcessorFactory.createOperationPolicy(policy, nextProcessor);
-    return just(event)
+  protected Publisher<CoreEvent> processPolicy(Policy policy, ReactiveProcessor nextProcessor, Publisher<CoreEvent> eventPub) {
+    Processor defaultOperationPolicy = operationPolicyProcessorFactory.createOperationPolicy(policy, nextProcessor);
+    return from(eventPub)
         .transform(defaultOperationPolicy)
         .map(policyResponse -> {
 
@@ -155,9 +156,9 @@ public class CompositeOperationPolicy extends
       if (getParametersTransformer().isPresent()) {
         return processWithChildContext(CoreEvent.builder(operationEvent)
             .message(getParametersTransformer().get().fromParametersToMessage(parametersProcessor.getOperationParameters()))
-            .build(), getPolicyProcessor(), empty());
+            .build(), getExecutionProcessor(), empty());
       } else {
-        return processWithChildContext(operationEvent, getPolicyProcessor(), empty());
+        return processWithChildContext(operationEvent, getExecutionProcessor(), empty());
       }
     } catch (Exception e) {
       return error(e);
