@@ -111,7 +111,7 @@ public class CompositeSourcePolicyTestCase extends AbstractMuleContextTestCase {
   public void singlePolicy() throws Exception {
     compositeSourcePolicy = new CompositeSourcePolicy(asList(firstPolicy),
                                                       sourcePolicyParametersTransformer, sourcePolicyProcessorFactory,
-                                                      flowExecutionProcessor, sourceParametersProcessor);
+                                                      flowExecutionProcessor);
 
     Either<SourcePolicyFailureResult, SourcePolicySuccessResult> sourcePolicyResult =
         from(compositeSourcePolicy.process(initialEvent, sourceParametersProcessor)).block();
@@ -130,7 +130,7 @@ public class CompositeSourcePolicyTestCase extends AbstractMuleContextTestCase {
   public void compositePolicy() throws Exception {
     compositeSourcePolicy =
         new CompositeSourcePolicy(asList(firstPolicy, secondPolicy), sourcePolicyParametersTransformer,
-                                  sourcePolicyProcessorFactory, flowExecutionProcessor, sourceParametersProcessor);
+                                  sourcePolicyProcessorFactory, flowExecutionProcessor);
 
     Either<SourcePolicyFailureResult, SourcePolicySuccessResult> sourcePolicyResult =
         from(compositeSourcePolicy.process(initialEvent, sourceParametersProcessor)).block();
@@ -153,7 +153,7 @@ public class CompositeSourcePolicyTestCase extends AbstractMuleContextTestCase {
   public void emptyPolicyList() throws Exception {
     compositeSourcePolicy = new CompositeSourcePolicy(emptyList(),
                                                       sourcePolicyParametersTransformer, sourcePolicyProcessorFactory,
-                                                      flowExecutionProcessor, sourceParametersProcessor);
+                                                      flowExecutionProcessor);
   }
 
   @Test
@@ -166,7 +166,7 @@ public class CompositeSourcePolicyTestCase extends AbstractMuleContextTestCase {
 
     compositeSourcePolicy = new CompositeSourcePolicy(asList(firstPolicy, secondPolicy), sourcePolicyParametersTransformer,
                                                       sourcePolicyProcessorFactory,
-                                                      flowExecutionProcessor, sourceParametersProcessor);
+                                                      flowExecutionProcessor);
 
     Either<SourcePolicyFailureResult, SourcePolicySuccessResult> sourcePolicyResult =
         from(compositeSourcePolicy.process(initialEvent, sourceParametersProcessor)).block();
@@ -186,7 +186,7 @@ public class CompositeSourcePolicyTestCase extends AbstractMuleContextTestCase {
     });
     compositeSourcePolicy = new CompositeSourcePolicy(asList(firstPolicy, secondPolicy), sourcePolicyParametersTransformer,
                                                       sourcePolicyProcessorFactory,
-                                                      flowExecutionProcessor, sourceParametersProcessor);
+                                                      flowExecutionProcessor);
 
     Either<SourcePolicyFailureResult, SourcePolicySuccessResult> sourcePolicyResult =
         from(compositeSourcePolicy.process(initialEvent, sourceParametersProcessor)).block();

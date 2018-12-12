@@ -32,11 +32,13 @@ import java.util.function.Function;
  *
  * @since 4.0
  */
-public abstract class AbstractCompositePolicy<ParametersTransformer, ParametersProcessor, Subject> {
+public abstract class AbstractCompositePolicy<ParametersTransformer, Subject> {
+
+  public static final String POLICY_SOURCE_PARAMETERS_PROCESSOR = "policy.source.parametersProcessor";
+  public static final String POLICY_OPERATION_PARAMETERS_PROCESSOR = "policy.operation.parametersProcessor";
 
   private final List<Policy> parameterizedPolicies;
   private final Optional<ParametersTransformer> parametersTransformer;
-  private final ParametersProcessor parametersProcessor;
   private final ReactiveProcessor executionProcessor;
 
   /**
@@ -47,12 +49,10 @@ public abstract class AbstractCompositePolicy<ParametersTransformer, ParametersP
    */
   public AbstractCompositePolicy(List<Policy> policies,
                                  Optional<ParametersTransformer> parametersTransformer,
-                                 ParametersProcessor parametersProcessor,
                                  Subject innerExecutionProcessor) {
     checkArgument(!policies.isEmpty(), "policies list cannot be empty");
     this.parameterizedPolicies = policies;
     this.parametersTransformer = parametersTransformer;
-    this.parametersProcessor = parametersProcessor;
     this.executionProcessor = getPolicyProcessor(innerExecutionProcessor);
   }
 
@@ -87,13 +87,6 @@ public abstract class AbstractCompositePolicy<ParametersTransformer, ParametersP
    */
   protected Optional<ParametersTransformer> getParametersTransformer() {
     return parametersTransformer;
-  }
-
-  /**
-   * @return the parameters processors that generates the parameters to be sent.
-   */
-  protected ParametersProcessor getParametersProcessor() {
-    return parametersProcessor;
   }
 
   /**

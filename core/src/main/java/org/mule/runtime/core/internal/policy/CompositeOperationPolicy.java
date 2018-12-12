@@ -34,9 +34,8 @@ import java.util.Optional;
  *
  * @since 4.0
  */
-public class CompositeOperationPolicy extends
-    AbstractCompositePolicy<OperationPolicyParametersTransformer, OperationParametersProcessor, OperationExecutionFunction>
-    implements OperationPolicy {
+public class CompositeOperationPolicy
+    extends AbstractCompositePolicy<OperationPolicyParametersTransformer, OperationExecutionFunction> implements OperationPolicy {
 
   private static final String POLICY_OPERATION_NEXT_OPERATION_RESPONSE = "policy.operation.nextOperationResponse";
 
@@ -59,9 +58,8 @@ public class CompositeOperationPolicy extends
   public CompositeOperationPolicy(List<Policy> parameterizedPolicies,
                                   Optional<OperationPolicyParametersTransformer> operationPolicyParametersTransformer,
                                   OperationPolicyProcessorFactory operationPolicyProcessorFactory,
-                                  OperationParametersProcessor operationParametersProcessor,
                                   OperationExecutionFunction operationExecutionFunction) {
-    super(parameterizedPolicies, operationPolicyParametersTransformer, operationParametersProcessor, operationExecutionFunction);
+    super(parameterizedPolicies, operationPolicyParametersTransformer, operationExecutionFunction);
     this.operationPolicyProcessorFactory = operationPolicyProcessorFactory;
   }
 
@@ -89,11 +87,17 @@ public class CompositeOperationPolicy extends
                                                       OperationExecutionFunction operationExecutionFunction) {
     return from(eventPub)
         .flatMap(event -> {
+          OperationParametersProcessor parametersProcessor =
+              (OperationParametersProcessor) ((InternalEvent) event).getInternalParameters()
+                  .get(POLICY_OPERATION_PARAMETERS_PROCESSOR);
+
           Map<String, Object> parametersMap = new HashMap<>();
-          try {
-            parametersMap.putAll(getParametersProcessor().getOperationParameters());
-          } catch (Exception e) {
-            return error(e);
+          if (parametersProcessor != null) {
+            try {
+              parametersMap.putAll(parametersProcessor.getOperationParameters());
+            } catch (Exception e) {
+              return error(e);
+            }
           }
           if (getParametersTransformer().isPresent()) {
             parametersMap.putAll(getParametersTransformer().get().fromMessageToParameters(event.getMessage()));
@@ -136,13 +140,17 @@ public class CompositeOperationPolicy extends
 
   @Override
   public Publisher<CoreEvent> process(CoreEvent operationEvent, OperationParametersProcessor parametersProcessor) {
+    CoreEvent operationEventForPolicy = InternalEvent.builder(operationEvent)
+        .addInternalParameter(POLICY_OPERATION_PARAMETERS_PROCESSOR, parametersProcessor)
+        .build();
+
     try {
       if (getParametersTransformer().isPresent()) {
-        return processWithChildContext(CoreEvent.builder(operationEvent)
-            .message(getParametersTransformer().get().fromParametersToMessage(getParametersProcessor().getOperationParameters()))
+        return processWithChildContext(CoreEvent.builder(operationEventForPolicy)
+            .message(getParametersTransformer().get().fromParametersToMessage(parametersProcessor.getOperationParameters()))
             .build(), getExecutionProcessor(), empty());
       } else {
-        return processWithChildContext(operationEvent, getExecutionProcessor(), empty());
+        return processWithChildContext(operationEventForPolicy, getExecutionProcessor(), empty());
       }
     } catch (Exception e) {
       return error(e);

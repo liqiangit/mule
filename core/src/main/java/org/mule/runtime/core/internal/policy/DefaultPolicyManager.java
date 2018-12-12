@@ -89,8 +89,7 @@ public class DefaultPolicyManager implements PolicyManager, Initialisable {
       return new CompositeSourcePolicy(parameterizedPolicies,
                                        lookupSourceParametersTransformer(source.getLocation().getComponentIdentifier()
                                            .getIdentifier()),
-                                       sourcePolicyProcessorFactory, flowExecutionProcessor,
-                                       messageSourceResponseParametersProcessor);
+                                       sourcePolicyProcessorFactory, flowExecutionProcessor);
     }
   }
 
@@ -120,7 +119,7 @@ public class DefaultPolicyManager implements PolicyManager, Initialisable {
     return new CompositeOperationPolicy(parameterizedPolicies,
                                         lookupOperationParametersTransformer(operation.getLocation().getComponentIdentifier()
                                             .getIdentifier()),
-                                        operationPolicyProcessorFactory, operationParameters, operationExecutionFunction);
+                                        operationPolicyProcessorFactory, operationExecutionFunction);
   }
 
   private Optional<OperationPolicyParametersTransformer> lookupOperationParametersTransformer(ComponentIdentifier componentIdentifier) {
