@@ -7,17 +7,20 @@
 package org.mule.runtime.core.internal.policy;
 
 import org.mule.runtime.api.component.Component;
+import org.mule.runtime.api.metadata.TypedValue;
 import org.mule.runtime.core.api.event.CoreEvent;
 import org.mule.runtime.core.api.processor.Processor;
+import org.mule.runtime.core.internal.message.InternalEvent;
+import org.mule.runtime.policy.api.PolicyPointcutParameters;
 
 import java.util.Map;
 
 /**
  * Manager for handling policies in Mule.
- * 
+ *
  * Implementation of this class will be used to lookup for {@code Policy}s that must be applied to {@code MessageSource}es or
  * {@code Processor}s.
- * 
+ *
  * @since 4.0
  */
 public interface PolicyManager {
@@ -37,6 +40,15 @@ public interface PolicyManager {
   SourcePolicy createSourcePolicyInstance(Component source, CoreEvent sourceEvent,
                                           Processor flowExecutionProcessor,
                                           MessageSourceResponseParametersProcessor messageSourceResponseParametersProcessor);
+
+  /**
+   * Creates and generates the {@link PolicyPointcutParameters} for the given {@code source} and {@code attributes}, and adds it
+   * as an internal parameter of the event to be built with {@code eventBuilder}.
+   *
+   * @return the created source parameters.
+   */
+  PolicyPointcutParameters addSourcePointcutParametersIntoEvent(Component source, TypedValue<?> attributes,
+                                                                InternalEvent.Builder eventBuilder);
 
   /**
    * Creates a policy to be applied to an operation. The creation must have into consideration the {@code operationIdentifier} to
