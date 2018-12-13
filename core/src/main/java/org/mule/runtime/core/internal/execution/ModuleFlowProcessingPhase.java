@@ -306,7 +306,7 @@ public class ModuleFlowProcessingPhase
   }
 
   private CoreEvent createEvent(ModuleFlowProcessingPhaseTemplate template, MessageSource source,
-                                CompletableFuture responseCompletion, FlowConstruct flowConstruct) {
+                                CompletableFuture<Void> responseCompletion, FlowConstruct flowConstruct) {
     Message message = template.getMessage();
     Builder eventBuilder;
 
@@ -345,17 +345,12 @@ public class ModuleFlowProcessingPhase
     return eventBuilder.build();
   }
 
-  private Builder createEventBuilder(ComponentLocation sourceLocation, CompletableFuture responseCompletion,
+  private Builder createEventBuilder(ComponentLocation sourceLocation, CompletableFuture<Void> responseCompletion,
                                      FlowConstruct flowConstruct, String correlationId, Message message) {
     return InternalEvent
         .builder(create(flowConstruct, NullExceptionHandler.getInstance(), sourceLocation, correlationId,
                         Optional.of(responseCompletion)))
         .message(message);
-  }
-
-
-  private CoreEvent emptyEvent(CoreEvent request) {
-    return builder(request).message(of(null)).build();
   }
 
   /**
