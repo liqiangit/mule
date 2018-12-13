@@ -68,8 +68,6 @@ import org.mule.runtime.core.privileged.execution.MessageProcessContext;
 import org.mule.runtime.core.privileged.execution.MessageProcessTemplate;
 import org.mule.runtime.extension.api.runtime.operation.Result;
 
-import org.reactivestreams.Publisher;
-
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
@@ -81,6 +79,8 @@ import java.util.function.Function;
 
 import javax.inject.Inject;
 import javax.xml.namespace.QName;
+
+import org.reactivestreams.Publisher;
 
 import reactor.core.publisher.Mono;
 
@@ -153,7 +153,7 @@ public class ModuleFlowProcessingPhase
       try {
         FlowProcessor flowExecutionProcessor = new FlowProcessor(template, flowConstruct);
         final SourcePolicy policy =
-            policyManager.createSourcePolicyInstance(messageSource, templateEvent, flowExecutionProcessor, template);
+            policyManager.createSourcePolicyInstance(messageSource, templateEvent, template);
         final PhaseContext phaseContext =
             new PhaseContext(template, messageProcessContext, phaseResultNotifier, terminateConsumer);
 
@@ -161,7 +161,7 @@ public class ModuleFlowProcessingPhase
             .doOnNext(onMessageReceived(template, messageProcessContext, flowConstruct))
             // Process policy and in turn flow emitting Either<SourcePolicyFailureResult,SourcePolicySuccessResult>> when
             // complete.
-            .flatMap(request -> from(policy.process(request, template))
+            .flatMap(request -> from(policy.process(request, flowExecutionProcessor, template))
                 // Perform processing of result by sending success or error response and handle errors that occur.
                 // Returns Publisher<Void> to signal when this is complete or if it failed.
                 .flatMap(policyResult -> policyResult.reduce(policyFailure(phaseContext, flowConstruct, messageSource),

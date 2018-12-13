@@ -17,12 +17,12 @@ import org.mule.runtime.core.api.policy.Policy;
 import org.mule.runtime.core.api.processor.Processor;
 import org.mule.runtime.core.api.processor.ReactiveProcessor;
 
-import org.reactivestreams.Publisher;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+
+import org.reactivestreams.Publisher;
 
 /**
  * Abstract implementation that performs the chaining of a set of policies and the {@link Processor} being intercepted.
@@ -33,9 +33,6 @@ import java.util.function.Function;
  * @since 4.0
  */
 public abstract class AbstractCompositePolicy<ParametersTransformer, Subject> {
-
-  public static final String POLICY_SOURCE_PARAMETERS_PROCESSOR = "policy.source.parametersProcessor";
-  public static final String POLICY_OPERATION_PARAMETERS_PROCESSOR = "policy.operation.parametersProcessor";
 
   private final List<Policy> parameterizedPolicies;
   private final Optional<ParametersTransformer> parametersTransformer;
@@ -48,12 +45,11 @@ public abstract class AbstractCompositePolicy<ParametersTransformer, Subject> {
    * @param parametersTransformer transformer from the operation parameters to a message and vice versa.
    */
   public AbstractCompositePolicy(List<Policy> policies,
-                                 Optional<ParametersTransformer> parametersTransformer,
-                                 Subject innerExecutionProcessor) {
+                                 Optional<ParametersTransformer> parametersTransformer) {
     checkArgument(!policies.isEmpty(), "policies list cannot be empty");
     this.parameterizedPolicies = policies;
     this.parametersTransformer = parametersTransformer;
-    this.executionProcessor = getPolicyProcessor(innerExecutionProcessor);
+    this.executionProcessor = getPolicyProcessor();
   }
 
   /**
@@ -66,13 +62,13 @@ public abstract class AbstractCompositePolicy<ParametersTransformer, Subject> {
    * in the chain until the finally policy it's executed in which case then next operation of it, it will be the operation
    * execution.
    */
-  public final ReactiveProcessor getPolicyProcessor(Subject executionProcessor) {
+  public final ReactiveProcessor getPolicyProcessor() {
     List<Function<ReactiveProcessor, ReactiveProcessor>> interceptors = new ArrayList<>();
     for (Policy policy : parameterizedPolicies) {
       interceptors.add(next -> eventPub -> from(processPolicy(policy, next, eventPub))
           .onErrorMap(throwable -> !(throwable instanceof MuleException), throwable -> new DefaultMuleException(throwable)));
     }
-    ReactiveProcessor chainedPoliciesAndOperation = eventPub -> from(processNextOperation(eventPub, executionProcessor))
+    ReactiveProcessor chainedPoliciesAndOperation = eventPub -> from(processNextOperation(eventPub))
         .onErrorMap(throwable -> !(throwable instanceof MuleException), throwable -> new DefaultMuleException(throwable));
     // Take processor publisher function itself and transform it by applying interceptor transformations onto it.
     reverse(interceptors);
@@ -99,11 +95,11 @@ public abstract class AbstractCompositePolicy<ParametersTransformer, Subject> {
   /**
    * Template method for executing the final processor of the chain.
    *
-   * @param event the event to use for executing the next operation.
+   * @param eventPub the event to use for executing the next operation.
    * @return the event to use for processing the after phase of the policy
    * @throws MuleException if there's an error executing processing the next operation.
    */
-  protected abstract Publisher<CoreEvent> processNextOperation(Publisher<CoreEvent> eventPub, Subject flowExecutionProcessor);
+  protected abstract Publisher<CoreEvent> processNextOperation(Publisher<CoreEvent> eventPub);
 
   /**
    * Template method for executing a policy.
@@ -111,7 +107,7 @@ public abstract class AbstractCompositePolicy<ParametersTransformer, Subject> {
    * @param policy the policy to execute
    * @param nextProcessor the next processor to use as the {@link PolicyNextActionMessageProcessor}. It will invoke the next
    *        policy in the chain.
-   * @param event the event to use for processing the policy.
+   * @param eventPub the event to use for processing the policy.
    * @return the result to use for the next policy in the chain.
    * @throws Exception if the execution of the policy fails.
    */

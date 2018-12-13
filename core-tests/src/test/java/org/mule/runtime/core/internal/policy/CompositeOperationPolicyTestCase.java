@@ -95,11 +95,12 @@ public class CompositeOperationPolicyTestCase extends AbstractMuleTestCase {
   @Test
   public void singlePolicy() throws Exception {
     compositeOperationPolicy = new CompositeOperationPolicy(asList(firstPolicy),
-                                                            operationPolicyParametersTransformer, operationPolicyProcessorFactory,
-                                                            operationExecutionFunction);
+                                                            operationPolicyParametersTransformer,
+                                                            operationPolicyProcessorFactory);
 
-    CoreEvent result = from(compositeOperationPolicy.process(initialEvent, operationParametersProcessor))
-        .doOnNext(event1 -> System.out.println("FINAL " + event1.getMessage().getPayload().getValue())).block();
+    CoreEvent result =
+        from(compositeOperationPolicy.process(initialEvent, operationExecutionFunction, operationParametersProcessor))
+            .doOnNext(event1 -> System.out.println("FINAL " + event1.getMessage().getPayload().getValue())).block();
 
     assertThat(result.getMessage(), is(nextProcessResultEvent.getMessage()));
     verify(operationExecutionFunction).execute(any(), any());
@@ -110,10 +111,11 @@ public class CompositeOperationPolicyTestCase extends AbstractMuleTestCase {
   @Test
   public void compositePolicy() throws Exception {
     compositeOperationPolicy = new CompositeOperationPolicy(asList(firstPolicy, secondPolicy),
-                                                            operationPolicyParametersTransformer, operationPolicyProcessorFactory,
-                                                            operationExecutionFunction);
+                                                            operationPolicyParametersTransformer,
+                                                            operationPolicyProcessorFactory);
 
-    CoreEvent result = from(compositeOperationPolicy.process(initialEvent, operationParametersProcessor)).block();
+    CoreEvent result =
+        from(compositeOperationPolicy.process(initialEvent, operationExecutionFunction, operationParametersProcessor)).block();
     assertThat(result.getMessage(), is(nextProcessResultEvent.getMessage()));
     verify(operationExecutionFunction).execute(any(), any());
     verify(operationPolicyProcessorFactory).createOperationPolicy(same(firstPolicy), any());
@@ -125,8 +127,8 @@ public class CompositeOperationPolicyTestCase extends AbstractMuleTestCase {
   @Test(expected = IllegalArgumentException.class)
   public void emptyPolicyList() throws Exception {
     compositeOperationPolicy = new CompositeOperationPolicy(emptyList(),
-                                                            operationPolicyParametersTransformer, operationPolicyProcessorFactory,
-                                                            operationExecutionFunction);
+                                                            operationPolicyParametersTransformer,
+                                                            operationPolicyProcessorFactory);
   }
 
   @Test
@@ -137,12 +139,12 @@ public class CompositeOperationPolicyTestCase extends AbstractMuleTestCase {
       return firstPolicyOperationPolicyProcessor;
     });
     compositeOperationPolicy = new CompositeOperationPolicy(asList(firstPolicy, secondPolicy),
-                                                            operationPolicyParametersTransformer, operationPolicyProcessorFactory,
-                                                            operationExecutionFunction);
+                                                            operationPolicyParametersTransformer,
+                                                            operationPolicyProcessorFactory);
     expectedException.expect(MuleException.class);
     expectedException.expectCause(is(policyException));
     try {
-      from(compositeOperationPolicy.process(initialEvent, operationParametersProcessor)).block();
+      from(compositeOperationPolicy.process(initialEvent, operationExecutionFunction, operationParametersProcessor)).block();
     } catch (Throwable throwable) {
       throw rxExceptionToMuleException(throwable);
     }
@@ -153,12 +155,12 @@ public class CompositeOperationPolicyTestCase extends AbstractMuleTestCase {
     RuntimeException policyException = new RuntimeException("policy failure");
     when(operationExecutionFunction.execute(any(), any())).thenReturn(error(policyException));
     compositeOperationPolicy = new CompositeOperationPolicy(asList(firstPolicy, secondPolicy),
-                                                            operationPolicyParametersTransformer, operationPolicyProcessorFactory,
-                                                            operationExecutionFunction);
+                                                            operationPolicyParametersTransformer,
+                                                            operationPolicyProcessorFactory);
     expectedException.expect(MuleException.class);
     expectedException.expectCause(is(policyException));
     try {
-      from(compositeOperationPolicy.process(initialEvent, operationParametersProcessor)).block();
+      from(compositeOperationPolicy.process(initialEvent, operationExecutionFunction, operationParametersProcessor)).block();
     } catch (Throwable throwable) {
       throw rxExceptionToMuleException(throwable);
     }

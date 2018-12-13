@@ -67,14 +67,13 @@ public class DefaultPolicyManager implements PolicyManager, Initialisable {
 
   @Override
   public SourcePolicy createSourcePolicyInstance(Component source, CoreEvent sourceEvent,
-                                                 Processor flowExecutionProcessor,
                                                  MessageSourceResponseParametersProcessor messageSourceResponseParametersProcessor) {
     List<Policy> parameterizedPolicies =
         policyProvider.findSourceParameterizedPolicies((PolicyPointcutParameters) ((InternalEvent) sourceEvent)
             .getInternalParameters().get(POLICY_SOURCE_POINTCUT_PARAMETERS));
 
     if (parameterizedPolicies.isEmpty()) {
-      return (event, respParamProcessor) -> from(process(event, flowExecutionProcessor))
+      return (event, flowExecutionProcessor, respParamProcessor) -> from(process(event, flowExecutionProcessor))
           .<Either<SourcePolicyFailureResult, SourcePolicySuccessResult>>map(flowExecutionResult -> right(new SourcePolicySuccessResult(flowExecutionResult,
                                                                                                                                         () -> messageSourceResponseParametersProcessor
                                                                                                                                             .getSuccessfulExecutionResponseParametersFunction()
@@ -89,7 +88,7 @@ public class DefaultPolicyManager implements PolicyManager, Initialisable {
       return new CompositeSourcePolicy(parameterizedPolicies,
                                        lookupSourceParametersTransformer(source.getLocation().getComponentIdentifier()
                                            .getIdentifier()),
-                                       sourcePolicyProcessorFactory, flowExecutionProcessor);
+                                       sourcePolicyProcessorFactory);
     }
   }
 
@@ -104,8 +103,7 @@ public class DefaultPolicyManager implements PolicyManager, Initialisable {
 
   @Override
   public OperationPolicy createOperationPolicy(Component operation, CoreEvent event,
-                                               OperationParametersProcessor operationParameters,
-                                               OperationExecutionFunction operationExecutionFunction) {
+                                               OperationParametersProcessor operationParameters) {
 
     PolicyPointcutParameters operationPointcutParameters =
         policyPointcutParametersManager.createOperationPointcutParameters(operation, event,
@@ -113,13 +111,13 @@ public class DefaultPolicyManager implements PolicyManager, Initialisable {
 
     List<Policy> parameterizedPolicies = policyProvider.findOperationParameterizedPolicies(operationPointcutParameters);
     if (parameterizedPolicies.isEmpty()) {
-      return (operationEvent, opParamProcessor) -> operationExecutionFunction.execute(opParamProcessor.getOperationParameters(),
-                                                                                      operationEvent);
+      return (operationEvent, operationExecutionFunction, opParamProcessor) -> operationExecutionFunction
+          .execute(opParamProcessor.getOperationParameters(), operationEvent);
     }
     return new CompositeOperationPolicy(parameterizedPolicies,
                                         lookupOperationParametersTransformer(operation.getLocation().getComponentIdentifier()
                                             .getIdentifier()),
-                                        operationPolicyProcessorFactory, operationExecutionFunction);
+                                        operationPolicyProcessorFactory);
   }
 
   private Optional<OperationPolicyParametersTransformer> lookupOperationParametersTransformer(ComponentIdentifier componentIdentifier) {

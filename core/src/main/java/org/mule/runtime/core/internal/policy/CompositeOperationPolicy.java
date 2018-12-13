@@ -38,6 +38,9 @@ public class CompositeOperationPolicy
     extends AbstractCompositePolicy<OperationPolicyParametersTransformer, OperationExecutionFunction> implements OperationPolicy {
 
   private static final String POLICY_OPERATION_NEXT_OPERATION_RESPONSE = "policy.operation.nextOperationResponse";
+  public static final String POLICY_OPERATION_PARAMETERS_PROCESSOR = "policy.operation.parametersProcessor";
+  public static final String POLICY_OPERATION_OPERATION_EXEC_FUNCTION = "policy.operation.operationExecutionFunction";
+
 
   private final OperationPolicyProcessorFactory operationPolicyProcessorFactory;
 
@@ -53,13 +56,11 @@ public class CompositeOperationPolicy
    * @param parameterizedPolicies list of {@link Policy} to chain together.
    * @param operationPolicyParametersTransformer transformer from the operation parameters to a message and vice versa.
    * @param operationPolicyProcessorFactory factory for creating each {@link OperationPolicy} from a {@link Policy}
-   * @param operationExecutionFunction the function that executes the operation.
    */
   public CompositeOperationPolicy(List<Policy> parameterizedPolicies,
                                   Optional<OperationPolicyParametersTransformer> operationPolicyParametersTransformer,
-                                  OperationPolicyProcessorFactory operationPolicyProcessorFactory,
-                                  OperationExecutionFunction operationExecutionFunction) {
-    super(parameterizedPolicies, operationPolicyParametersTransformer, operationExecutionFunction);
+                                  OperationPolicyProcessorFactory operationPolicyProcessorFactory) {
+    super(parameterizedPolicies, operationPolicyParametersTransformer);
     this.operationPolicyProcessorFactory = operationPolicyProcessorFactory;
   }
 
@@ -83,21 +84,21 @@ public class CompositeOperationPolicy
    * @param eventPub the event to execute the operation.
    */
   @Override
-  protected Publisher<CoreEvent> processNextOperation(Publisher<CoreEvent> eventPub,
-                                                      OperationExecutionFunction operationExecutionFunction) {
+  protected Publisher<CoreEvent> processNextOperation(Publisher<CoreEvent> eventPub) {
     return from(eventPub)
         .flatMap(event -> {
           OperationParametersProcessor parametersProcessor =
               (OperationParametersProcessor) ((InternalEvent) event).getInternalParameters()
                   .get(POLICY_OPERATION_PARAMETERS_PROCESSOR);
+          OperationExecutionFunction operationExecutionFunction =
+              (OperationExecutionFunction) ((InternalEvent) event).getInternalParameters()
+                  .get(POLICY_OPERATION_OPERATION_EXEC_FUNCTION);
 
           Map<String, Object> parametersMap = new HashMap<>();
-          if (parametersProcessor != null) {
-            try {
-              parametersMap.putAll(parametersProcessor.getOperationParameters());
-            } catch (Exception e) {
-              return error(e);
-            }
+          try {
+            parametersMap.putAll(parametersProcessor.getOperationParameters());
+          } catch (Exception e) {
+            return error(e);
           }
           if (getParametersTransformer().isPresent()) {
             parametersMap.putAll(getParametersTransformer().get().fromMessageToParameters(event.getMessage()));
@@ -139,9 +140,11 @@ public class CompositeOperationPolicy
   }
 
   @Override
-  public Publisher<CoreEvent> process(CoreEvent operationEvent, OperationParametersProcessor parametersProcessor) {
+  public Publisher<CoreEvent> process(CoreEvent operationEvent, OperationExecutionFunction operationExecutionFunction,
+                                      OperationParametersProcessor parametersProcessor) {
     CoreEvent operationEventForPolicy = InternalEvent.builder(operationEvent)
         .addInternalParameter(POLICY_OPERATION_PARAMETERS_PROCESSOR, parametersProcessor)
+        .addInternalParameter(POLICY_OPERATION_OPERATION_EXEC_FUNCTION, operationExecutionFunction)
         .build();
 
     try {

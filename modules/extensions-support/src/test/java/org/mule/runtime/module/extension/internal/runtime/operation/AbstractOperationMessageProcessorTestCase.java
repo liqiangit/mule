@@ -350,13 +350,14 @@ public abstract class AbstractOperationMessageProcessorTestCase extends Abstract
 
     when(stringType.getAnnotation(anyObject())).thenReturn(empty());
 
-    when(mockPolicyManager.createOperationPolicy(any(), any(), any(), any())).thenAnswer(invocationOnMock -> {
+    when(mockPolicyManager.createOperationPolicy(any(), any(), any())).thenAnswer(invocationOnMock -> {
       if (mockOperationPolicy == null) {
         mockOperationPolicy = mock(OperationPolicy.class);
-        when(mockOperationPolicy.process(any(), any()))
-            .thenAnswer(operationPolicyInvocationMock -> ((OperationExecutionFunction) invocationOnMock.getArguments()[3])
-                .execute(((OperationParametersProcessor) invocationOnMock.getArguments()[2]).getOperationParameters(),
-                         (CoreEvent) invocationOnMock.getArguments()[1]));
+        when(mockOperationPolicy.process(any(), any(), any()))
+            .thenAnswer(operationPolicyInvocationMock -> ((OperationExecutionFunction) operationPolicyInvocationMock
+                .getArguments()[1])
+                    .execute(((OperationParametersProcessor) invocationOnMock.getArguments()[2]).getOperationParameters(),
+                             (CoreEvent) invocationOnMock.getArguments()[1]));
       }
       return mockOperationPolicy;
     });
